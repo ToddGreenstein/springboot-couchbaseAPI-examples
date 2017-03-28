@@ -34,6 +34,7 @@ public class DemoApplication implements Filter {
         SpringApplication.run(DemoApplication.class, args);
     }
 
+    // CORS enable
     @Override
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
             throws IOException, ServletException {
@@ -51,27 +52,35 @@ public class DemoApplication implements Filter {
     public void destroy() {
     }
 
+    // Hostname for couchbase cluster, from application.properties
     @Value("${hostname}")
     private String hostname;
 
+    // Bucket for couchbase cluster, from application.properties
     @Value("${bucket}")
     private String bucket;
-
+    
+    // Password for couchbase cluster, from application.properties
     @Value("${password}")
     private String password;
 
+    // Setup a static logger for console output logging.  
     private static final Logger LOGGER = LoggerFactory.getLogger(DemoApplication.class);
 
+    // Setup the couchbase cluster
     public @Bean
     Cluster cluster() {
         return CouchbaseCluster.create(hostname);
     }
 
+    // Reference to the open bucket 
     public @Bean
     Bucket bucket() {
         return cluster().openBucket(bucket, password);
     }
 
+    // Find Social Security Numbers stored in plaintext within the database.  
+    // -- curl 'http://localhost:8080/findPIISSN'| python -m json.tool
     @RequestMapping(value = "/findPIISSN", method = RequestMethod.GET)
     public Object findPIISSN(@RequestParam("verbose") Optional<String> verbose) {
         String query;
@@ -94,6 +103,8 @@ public class DemoApplication implements Filter {
 
     }
 
+    // Find a range of Documents based on a linear key structure
+    // --  curl 'http://localhost:8080/findRange?lower=1500&upper=3000'| python -m json.tool
     @RequestMapping(value = "/findRange", method = RequestMethod.GET)
     public Object findRange(@RequestParam("lower") String lower,
             @RequestParam("upper") String upper) {
@@ -118,6 +129,9 @@ public class DemoApplication implements Filter {
 
     }
 
+    // Find all invoices by user
+    // -- curl 'http://localhost:8080/findInvoices' | python -m json.tool
+    // -- curl 'http://localhost:8080/sumInvoices?email=Aaliyah.Botsford@hotmail.com'| python -m json.tool
     @RequestMapping(value = "/findInvoices", method = RequestMethod.GET)
     public Object findInvoices(@RequestParam("email") Optional<String> email,
             @RequestParam("limit") Optional<String> limit,
@@ -143,6 +157,10 @@ public class DemoApplication implements Filter {
                 .toBlocking()
                 .single();
     }
+
+    // Sum of all payments by user
+    // -- curl 'http://localhost:8080/sumPayments' | python -m json.tool
+    // -- curl 'http://localhost:8080/sumPayments?email=Aaliyah.Botsford@hotmail.com' | python -m json.tool
 
     @RequestMapping(value = "/sumPayments", method = RequestMethod.GET)
     public Object sumPayments(@RequestParam("email") Optional<String> email,
@@ -171,6 +189,8 @@ public class DemoApplication implements Filter {
                 .single();
     }
 
+    // Create N Entries using rx async
+    // -- curl -X POST 'http://localhost:8080/createBulk?items=100000' | python -m json.tool
     @RequestMapping(value = "/createBulk", method = RequestMethod.POST)
     public Object createBulk(@RequestParam("items") int items) {
         final JsonObject content = JsonObject.create().put("item", "A bulk insert test value");
@@ -198,6 +218,8 @@ public class DemoApplication implements Filter {
                 .count().map((Integer count) -> count + " Items Added Successfully").toBlocking().single();
     }
 
+    // Read N entries using rx async
+    // --  curl 'http://localhost:8080/readBulk?items=1000' | python -m json.tool
     @RequestMapping(value = "/readBulk", method = RequestMethod.GET)
     public Object readBulk(@RequestParam("items") int items) {
         final List<JsonObject> results = new ArrayList<>();
@@ -226,6 +248,9 @@ public class DemoApplication implements Filter {
         return results;
     }
 
+    // Create an invoice document fragment and add it to the invoice array for a user using 
+    //   the subdocument API
+    // -- curl -X POST 'http://localhost:8080/createInvoice?key=test::1002&business=costco&name=marysbicycle&account=35333&amount=33.51' | python -m json.tool
     @RequestMapping(value = "/createInvoice", method = RequestMethod.POST)
     public Object createInvoice(@RequestParam("key") String key,
             @RequestParam("business") String business,
