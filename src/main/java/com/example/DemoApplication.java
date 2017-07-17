@@ -3,6 +3,7 @@ package com.example;
 import com.couchbase.client.core.BackpressureException;
 import com.couchbase.client.core.time.Delay;
 import com.couchbase.client.deps.io.netty.channel.ConnectTimeoutException;
+import com.couchbase.client.java.document.json.JsonArray;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import com.couchbase.client.java.*;
 import com.couchbase.client.java.CouchbaseCluster;
@@ -268,5 +269,56 @@ public class DemoApplication implements Filter {
                  false)
                 .execute();
         return "Invoice " + name + " added to " + key;
+    }
+
+    // Create an Order
+    // -- curl -X POST 'http://localhost:8080/createOrder?orderNo=1234&orderType=Online'
+    @RequestMapping(value = "/createOrder", method = RequestMethod.POST)
+    public Object createOrder(@RequestParam("orderNo") int orderNo,
+                              @RequestParam("orderType") String orderType) {
+        bucket().insert(JsonDocument.create("Order::" + orderNo, JsonObject
+                .create()
+                .put("OrderNo", orderNo)
+                .put("OrderType",orderType)
+                .put("OrderLine", JsonArray.create())
+        ));
+        return "Order " + orderNo + " Added";
+    }
+
+    // Retrieve an Order
+    // --  curl -X GET 'http://localhost:8080/readOrder?orderNo=1234' | python -mjson.tool
+    @RequestMapping(value = "/readOrder", method = RequestMethod.GET)
+    public Object createOrder(@RequestParam("orderNo") int orderNo) {
+        return bucket().get("Order::" + Integer.toString(orderNo)).content().toString();
+    }
+
+    // Add a line item to an Order
+    // -- curl -X POST 'http://localhost:8080/createLineItem?orderNo=1234&lineNo=1&lineItemId=VX970&status=Ordered'
+    @RequestMapping(value = "/createLineItem", method = RequestMethod.POST)
+    public Object createLineItem(@RequestParam("orderNo") int orderNo,
+                                 @RequestParam("lineNo") int lineNo,
+                                 @RequestParam("lineItemId") String lineItemId,
+                                 @RequestParam("status") String status ){
+        bucket().mutateIn("Order::"+orderNo).arrayAppend("OrderLine", JsonObject
+                        .create()
+                        .put("LineNo",lineNo)
+                        .put("LineItemId", lineItemId)
+                        .put("Status",status)
+                        .put("Created", String.format("%1$tY-%1$tm-%1$tdT%1$tH:%1$tM:%1$tS.%1$tL%1$tz", new Date())),
+                false )
+                .execute();
+        return "Line Item " + lineNo + " Added to Order " + orderNo;
+    }
+
+    // Change a Status of a line item within an order
+    // -- curl -X POST 'http://localhost:8080/updateLineItem?orderNo=1234&lineNo=1&lineItemId=VX970&status=Shipped'
+    @RequestMapping(value = "/updateLineItem", method = RequestMethod.POST)
+    public Object createLineItem(@RequestParam("orderNo") int orderNo,
+                                 @RequestParam("lineNo") int lineNo,
+                                 @RequestParam("status") String status){
+        bucket().mutateIn("Order::"+orderNo)
+                .replace("OrderLine[" + (lineNo -1) + "].Status",status)
+                .execute();
+        return "Line Item " + lineNo + " Updated to + " + status + " in Order " + orderNo;
     }
 }
