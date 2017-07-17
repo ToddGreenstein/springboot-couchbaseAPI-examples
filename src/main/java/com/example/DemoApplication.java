@@ -272,7 +272,7 @@ public class DemoApplication implements Filter {
     }
 
     // Create an Order
-    // -- curl -X POST 'http://localhost:8080/createOrder?orderNo=1234&orderType=Online'
+    // -- curl -X POST 'http://localhost:8080/createOrder?orderNo=1234&orderType=Online' -w "\n"
     @RequestMapping(value = "/createOrder", method = RequestMethod.POST)
     public Object createOrder(@RequestParam("orderNo") int orderNo,
                               @RequestParam("orderType") String orderType) {
@@ -293,7 +293,7 @@ public class DemoApplication implements Filter {
     }
 
     // Add a line item to an Order
-    // -- curl -X POST 'http://localhost:8080/createLineItem?orderNo=1234&lineNo=1&lineItemId=VX970&status=Ordered'
+    // -- curl -X POST 'http://localhost:8080/createLineItem?orderNo=1234&lineNo=1&lineItemId=VX970&status=Ordered' -w "\n"
     @RequestMapping(value = "/createLineItem", method = RequestMethod.POST)
     public Object createLineItem(@RequestParam("orderNo") int orderNo,
                                  @RequestParam("lineNo") int lineNo,
@@ -311,7 +311,7 @@ public class DemoApplication implements Filter {
     }
 
     // Change a Status of a line item within an order
-    // -- curl -X POST 'http://localhost:8080/updateLineItem?orderNo=1234&lineNo=1&lineItemId=VX970&status=Shipped'
+    // -- curl -X POST 'http://localhost:8080/updateLineItem?orderNo=1234&lineNo=1&lineItemId=VX970&status=Shipped' -w "\n"
     @RequestMapping(value = "/updateLineItem", method = RequestMethod.POST)
     public Object createLineItem(@RequestParam("orderNo") int orderNo,
                                  @RequestParam("lineNo") int lineNo,
@@ -319,6 +319,6 @@ public class DemoApplication implements Filter {
         bucket().mutateIn("Order::"+orderNo)
                 .replace("OrderLine[" + (lineNo -1) + "].Status",status)
                 .execute();
-        return "Line Item " + lineNo + " Updated to + " + status + " in Order " + orderNo;
+        return "Line Item " + lineNo + " Updated to " + status + " in Order " + orderNo;
     }
 }
