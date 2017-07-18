@@ -271,7 +271,7 @@ public class DemoApplication implements Filter {
         return "Invoice " + name + " added to " + key;
     }
 
-    // Create an Order
+    // Create an Order Document
     // -- curl -X POST 'http://localhost:8080/createOrder?orderNo=1234&orderType=Online' -w "\n"
     @RequestMapping(value = "/createOrder", method = RequestMethod.POST)
     public Object createOrder(@RequestParam("orderNo") int orderNo,
@@ -285,14 +285,14 @@ public class DemoApplication implements Filter {
         return "Order " + orderNo + " Added";
     }
 
-    // Retrieve an Order
+    // Retrieve an Order Document
     // --  curl -X GET 'http://localhost:8080/readOrder?orderNo=1234' | python -mjson.tool
     @RequestMapping(value = "/readOrder", method = RequestMethod.GET)
-    public Object createOrder(@RequestParam("orderNo") int orderNo) {
+    public Object readOrder(@RequestParam("orderNo") int orderNo) {
         return bucket().get("Order::" + Integer.toString(orderNo)).content().toString();
     }
 
-    // Add a line item to an Order
+    // Add a line item to an Order Document
     // -- curl -X POST 'http://localhost:8080/createLineItem?orderNo=1234&lineNo=1&lineItemId=VX970&status=Ordered' -w "\n"
     @RequestMapping(value = "/createLineItem", method = RequestMethod.POST)
     public Object createLineItem(@RequestParam("orderNo") int orderNo,
@@ -310,15 +310,49 @@ public class DemoApplication implements Filter {
         return "Line Item " + lineNo + " Added to Order " + orderNo;
     }
 
-    // Change a Status of a line item within an order
+    // Change a Status of a line item within an Order Document
     // -- curl -X POST 'http://localhost:8080/updateLineItem?orderNo=1234&lineNo=1&lineItemId=VX970&status=Shipped' -w "\n"
     @RequestMapping(value = "/updateLineItem", method = RequestMethod.POST)
-    public Object createLineItem(@RequestParam("orderNo") int orderNo,
+    public Object updateLineItem(@RequestParam("orderNo") int orderNo,
                                  @RequestParam("lineNo") int lineNo,
                                  @RequestParam("status") String status){
         bucket().mutateIn("Order::"+orderNo)
                 .replace("OrderLine[" + (lineNo -1) + "].Status",status)
                 .execute();
         return "Line Item " + lineNo + " Updated to " + status + " in Order " + orderNo;
+    }
+
+    // Add Address
+    // -- curl -X POST 'http://localhost:8080/createAddress?orderNo=1234&addressId=BillTo&street=4+Yawkey+way&city=Boston&state=MA&zipcode=02215&status=inactive' -w "\n"
+    @RequestMapping(value = "/createAddress", method = RequestMethod.POST)
+    public Object createAddress(@RequestParam("orderNo") int orderNo,
+                                 @RequestParam("addressId") String addressId,
+                                 @RequestParam("street") String street,
+                                 @RequestParam("city") String city,
+                                 @RequestParam("state") String state,
+                                 @RequestParam("zipcode") String zipcode,
+                                 @RequestParam("status") String status){
+        bucket().mutateIn("Order::"+orderNo).insert(addressId,JsonObject
+                        .create()
+                        .put("Street",street)
+                        .put("City", city)
+                        .put("State",state)
+                        .put("Zipcode",zipcode)
+                        .put("Status",status)
+                        .put("Created", String.format("%1$tY-%1$tm-%1$tdT%1$tH:%1$tM:%1$tS.%1$tL%1$tz", new Date())),
+                false )
+                .execute();
+        return "Address " + addressId + " Added to Order " + orderNo;
+    }
+    // Change a Status of an address
+    // -- curl -X POST 'http://localhost:8080/updateAddress?orderNo=1234&addressId=BillTo&status=inactive' -w "\n"
+    @RequestMapping(value = "/updateAddress", method = RequestMethod.POST)
+    public Object updateAddress(@RequestParam("orderNo") int orderNo,
+                                @RequestParam("addressId") String addressId,
+                                @RequestParam("status") String status){
+        bucket().mutateIn("Order::"+orderNo)
+                .replace(addressId + ".Status",status)
+                .execute();
+        return "Address " + addressId + " Updated to " + status + " in Order " + orderNo;
     }
 }
